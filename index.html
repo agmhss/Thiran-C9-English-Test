@@ -407,7 +407,7 @@
 
       doc.setFont("helvetica", "bold");
       doc.setFontSize(12);
-      doc.text("My Quiz Answers", 14, y);
+      doc.text("My Quiz Answers", 13, y);
       y += 10;
 
       doc.setFont("helvetica", "normal");
@@ -420,7 +420,7 @@
           `Correct Answer: ${q.correctAnswer}`
         ];
         lines.forEach(line => {
-          doc.text(line, 14, y);
+          doc.text(line, 13, y);
           y += 7;
           if (y > 270) { doc.addPage(); y = 20; }
         });
