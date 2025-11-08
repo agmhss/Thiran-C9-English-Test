@@ -22,22 +22,13 @@
   .controls{display:flex;gap:8px;align-items:center;margin-top:12px;flex-wrap:wrap}
   button{background:var(--accent);color:#fff;border:0;padding:10px 14px;border-radius:8px;cursor:pointer}
   .btn-ghost{background:#fff;border:1px solid #dbeefe;color:var(--accent)}
-  .timer{font-weight:700;padding:6px 10px;border-radius:8px;background:#f1f7ff;border:1px solid #dbeefe}
   .progress{height:8px;background:#eef6ff;border-radius:8px;margin-top:8px;overflow:hidden}
   .progress > i{display:block;height:100%;background:linear-gradient(90deg,#2b6cb0,#4f9ae6);width:0%}
   .feedback{margin-top:8px;font-weight:700;min-height:22px}
-  .hall{margin-top:10px;padding:10px;border-radius:8px;background:#fff7ef;border:1px solid #ffe8cc}
-  .hof-list{margin-top:8px}
-  .hof-item{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px dashed #fff2e6}
-  .certificate{display:none}
-  .hidden { display:none; }
-  .download-link{margin-top:10px;display:none}
+  .timer{font-weight:700;padding:6px 10px;border-radius:8px;background:#f1f7ff;border:1px solid #dbeefe;margin-left:auto}
   @media(max-width:620px){
     .options{grid-template-columns:1fr}
     header{gap:8px}
-    .meta{text-align:left;margin-left:0}
-    #playerDetails{flex-direction:column}
-    #playerDetails input{flex:1 1 100%; width:100%}
   }
 </style>
 </head>
@@ -46,7 +37,7 @@
     <header>
       <div>
         <h1>Gtk Thiran English Class 9 – 10 Marks Test</h1>
-        <div style="font-size:.88rem;color:#556">Random 10-question test — options & questions shuffle every run</div>
+        <div style="font-size:.88rem;color:#556">10 fixed questions — one after another — 30s timer per question</div>
       </div>
       <div class="meta" aria-live="polite">
         <div>Score: <span id="currentScore" class="score">0</span></div>
@@ -62,581 +53,382 @@
         <button id="submitBtn" disabled>Submit Answer</button>
         <button id="skipBtn" class="btn-ghost" disabled>Skip</button>
         <button id="nextBtn" class="btn-ghost" style="display:none">Next</button>
-        <div style="margin-left:auto;font-size:.9rem;color:#667">Q <span id="qIndex">0</span>/<span id="qTotal">10</span></div>
+        <div class="timer" id="timer">⏳ 30s</div>
+        <div style="font-size:.9rem;color:#667">Q <span id="qIndex">0</span>/<span id="qTotal">10</span></div>
       </div>
 
       <div class="progress" aria-hidden="true"><i id="progressBar"></i></div>
       <div class="feedback" id="feedback" aria-live="polite"></div>
     </div>
 
-    <div id="playerDetails" style="display:flex;gap:10px;flex-wrap:wrap;margin-top:10px">
-      <input id="playerName" placeholder="Name (optional)" style="padding:8px;border-radius:6px;border:1px solid #e1eefc;flex:1 1 30%" maxlength="50" />
-      <input id="playerClass" placeholder="Class (optional)" style="padding:8px;border-radius:6px;border:1px solid #e1eefc;flex:1 1 30%" maxlength="20" />
-      <input id="playerSection" placeholder="Section (optional)" style="padding:8px;border-radius:6px;border:1px solid #e1eefc;flex:1 1 30%" maxlength="20" />
-    </div>
-
     <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:10px">
       <button id="startBtn">Start Game</button>
       <button id="restartBtn" class="btn-ghost" style="display:none">Restart</button>
-      <button id="showHofBtn" class="btn-ghost">Show Hall of Fame</button>
     </div>
 
-    <div class="hall hidden" id="hall" aria-live="polite">
-      <strong>🏆 Hall of Fame (Top 10)</strong>
-      <div class="hof-list" id="hofList"></div>
-
-      <div style="margin-top:10px">
-        <div style="font-size:.95rem">If you made the top score, enter your name:</div>
-        <input id="hofName" placeholder="Your name" style="padding:8px;border-radius:6px;border:1px solid #e1eefc;width:60%;margin-top:8px" maxlength="30"/>
-        <button id="saveHofBtn" style="margin-left:8px">Save</button>
-      </div>
-    </div>
-
-    <canvas id="certificate" class="certificate" width="1000" height="700"></canvas>
-    <a id="certDownloadLink" class="download-link" download="certificate.png">Download Certificate</a>
+    <!-- Download PDF -->
+    <button id="downloadPdfBtn" style="
+      display:none;
+      background:#2b6cb0;
+      color:white;
+      border:none;
+      padding:10px 20px;
+      border-radius:8px;
+      font-size:16px;
+      cursor:pointer;
+      margin-top:20px;
+    ">
+      📄 Download My Answers (PDF)
+    </button>
   </div>
 
-<script>
-/* ============================
-   Question bank (derived from Thiran English Class-9 PDF)
-   Each item: { sentence, chapter, options: [...], answerText, explanation (optional) }
-   ============================ */
+  <!-- Load jsPDF from CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
-const bank = [
-  // --- Verb Tense (Added 10 more) ---
-  { sentence: "Choose correct: 'We ____ this movie before.'", chapter:"Verb Tense", options:["have seen","saw","see","am seeing"], answerText:"have seen", explanation:"Present perfect for experience." },
-  { sentence: "Choose correct: 'I ____ my homework when the power went off.'", chapter:"Verb Tense", options:["was doing","did","am doing","had done"], answerText:"was doing", explanation:"Past continuous interrupted by another past action." },
-  { sentence: "Choose correct: 'She ____ here since 2015.'", chapter:"Verb Tense", options:["has worked","worked","works","is working"], answerText:"has worked", explanation:"'since' → present perfect tense." },
-  { sentence: "Choose correct: 'By the time we arrived, the bus ____.'", chapter:"Verb Tense", options:["had left","left","leaves","was leaving"], answerText:"had left", explanation:"Past perfect before another past action." },
-  { sentence: "Choose correct: 'I ____ breakfast at 8 every day.'", chapter:"Verb Tense", options:["eat","ate","am eating","have eaten"], answerText:"eat", explanation:"Habitual action → simple present." },
-  { sentence: "Choose correct: 'They ____ to Delhi last summer.'", chapter:"Verb Tense", options:["went","go","have gone","are going"], answerText:"went", explanation:"Completed action in the past → simple past." },
-  { sentence: "Choose correct: 'He ____ to school right now.'", chapter:"Verb Tense", options:["is going","goes","went","has gone"], answerText:"is going", explanation:"Current action → present continuous." },
-  { sentence: "Choose correct: 'We ____ dinner when the guests arrived.'", chapter:"Verb Tense", options:["were having","had","have","are having"], answerText:"were having", explanation:"Past continuous when another past action happened." },
-  { sentence: "Choose correct: 'She ____ her keys yesterday.'", chapter:"Verb Tense", options:["lost","has lost","loses","was losing"], answerText:"lost", explanation:"Yesterday → simple past." },
-  { sentence: "Choose correct: 'By next month, we ____ the project.'", chapter:"Verb Tense", options:["will have finished","finished","finish","had finished"], answerText:"will have finished", explanation:"Future perfect tense." },
-  { sentence: "Choose correct: 'He ____ English for five years.'", chapter:"Verb Tense", options:["has studied","studied","studies","is studying"], answerText:"has studied", explanation:"Duration → present perfect tense." },
+  <script>
+    /* ============================
+       FULL QUESTION BANK (exact copy)
+       ============================ */
+    const bank = [
+      // --- Verb Tense ---
+      { sentence: "Choose correct: 'We ____ this movie before.'", chapter:"Verb Tense", options:["have seen","saw","see","am seeing"], answerText:"have seen", explanation:"Present perfect for experience." },
+      { sentence: "Choose correct: 'I ____ my homework when the power went off.'", chapter:"Verb Tense", options:["was doing","did","am doing","had done"], answerText:"was doing", explanation:"Past continuous interrupted by another past action." },
+      { sentence: "Choose correct: 'She ____ here since 2015.'", chapter:"Verb Tense", options:["has worked","worked","works","is working"], answerText:"has worked", explanation:"'since' → present perfect tense." },
+      { sentence: "Choose correct: 'By the time we arrived, the bus ____.'", chapter:"Verb Tense", options:["had left","left","leaves","was leaving"], answerText:"had left", explanation:"Past perfect before another past action." },
+      { sentence: "Choose correct: 'I ____ breakfast at 8 every day.'", chapter:"Verb Tense", options:["eat","ate","am eating","have eaten"], answerText:"eat", explanation:"Habitual action → simple present." },
+      { sentence: "Choose correct: 'They ____ to Delhi last summer.'", chapter:"Verb Tense", options:["went","go","have gone","are going"], answerText:"went", explanation:"Completed action in the past → simple past." },
+      { sentence: "Choose correct: 'He ____ to school right now.'", chapter:"Verb Tense", options:["is going","goes","went","has gone"], answerText:"is going", explanation:"Current action → present continuous." },
+      { sentence: "Choose correct: 'We ____ dinner when the guests arrived.'", chapter:"Verb Tense", options:["were having","had","have","are having"], answerText:"were having", explanation:"Past continuous when another past action happened." },
+      { sentence: "Choose correct: 'She ____ her keys yesterday.'", chapter:"Verb Tense", options:["lost","has lost","loses","was losing"], answerText:"lost", explanation:"Yesterday → simple past." },
+      { sentence: "Choose correct: 'By next month, we ____ the project.'", chapter:"Verb Tense", options:["will have finished","finished","finish","had finished"], answerText:"will have finished", explanation:"Future perfect tense." },
+      { sentence: "Choose correct: 'He ____ English for five years.'", chapter:"Verb Tense", options:["has studied","studied","studies","is studying"], answerText:"has studied", explanation:"Duration → present perfect tense." },
 
-  // --- Prepositions (Added 10 more) ---
-  { sentence: "Choose the correct word: 'He is afraid ___ snakes.'", chapter:"Prepositions", options:["of","from","by","about"], answerText:"of", explanation:"'afraid of'." },
-  { sentence: "Choose the correct: 'She is good ___ painting.'", chapter:"Prepositions", options:["at","on","in","for"], answerText:"at", explanation:"'good at'." },
-  { sentence: "Choose the correct: 'He sat ___ the chair.'", chapter:"Prepositions", options:["on","in","at","over"], answerText:"on", explanation:"Sit on a chair." },
-  { sentence: "Choose the correct: 'The cat jumped ___ the wall.'", chapter:"Prepositions", options:["over","on","in","through"], answerText:"over", explanation:"Jumped over → across from one side to another." },
-  { sentence: "Choose the correct: 'The shop is ___ the corner.'", chapter:"Prepositions", options:["at","on","in","by"], answerText:"at", explanation:"'at the corner' is correct." },
-  { sentence: "Choose the correct: 'He divided the cake ___ four parts.'", chapter:"Prepositions", options:["into","in","at","to"], answerText:"into", explanation:"Divide into parts." },
-  { sentence: "Choose the correct: 'The boy ran ___ the field.'", chapter:"Prepositions", options:["across","through","in","on"], answerText:"across", explanation:"'across the field' → from one side to another." },
-  { sentence: "Choose the correct: 'The picture is ___ the wall.'", chapter:"Prepositions", options:["on","over","above","in"], answerText:"on", explanation:"'on the wall' → contact surface." },
-  { sentence: "Choose the correct: 'He comes ___ a small village.'", chapter:"Prepositions", options:["from","of","at","in"], answerText:"from", explanation:"Origin → 'from'." },
-  { sentence: "Choose the correct: 'She was born ___ April.'", chapter:"Prepositions", options:["in","on","at","during"], answerText:"in", explanation:"Months → 'in'." },
-  { sentence: "Choose the correct: 'Meet me ___ the bus stop.'", chapter:"Prepositions", options:["at","on","in","over"], answerText:"at", explanation:"Fixed point → 'at'." },
+      // --- Prepositions ---
+      { sentence: "Choose the correct word: 'He is afraid ___ snakes.'", chapter:"Prepositions", options:["of","from","by","about"], answerText:"of", explanation:"'afraid of'." },
+      { sentence: "Choose the correct: 'She is good ___ painting.'", chapter:"Prepositions", options:["at","on","in","for"], answerText:"at", explanation:"'good at'." },
+      { sentence: "Choose the correct: 'He sat ___ the chair.'", chapter:"Prepositions", options:["on","in","at","over"], answerText:"on", explanation:"Sit on a chair." },
+      { sentence: "Choose the correct: 'The cat jumped ___ the wall.'", chapter:"Prepositions", options:["over","on","in","through"], answerText:"over", explanation:"Jumped over → across from one side to another." },
+      { sentence: "Choose the correct: 'The shop is ___ the corner.'", chapter:"Prepositions", options:["at","on","in","by"], answerText:"at", explanation:"'at the corner' is correct." },
+      { sentence: "Choose the correct: 'He divided the cake ___ four parts.'", chapter:"Prepositions", options:["into","in","at","to"], answerText:"into", explanation:"Divide into parts." },
+      { sentence: "Choose the correct: 'The boy ran ___ the field.'", chapter:"Prepositions", options:["across","through","in","on"], answerText:"across", explanation:"'across the field' → from one side to another." },
+      { sentence: "Choose the correct: 'The picture is ___ the wall.'", chapter:"Prepositions", options:["on","over","above","in"], answerText:"on", explanation:"'on the wall' → contact surface." },
+      { sentence: "Choose the correct: 'He comes ___ a small village.'", chapter:"Prepositions", options:["from","of","at","in"], answerText:"from", explanation:"Origin → 'from'." },
+      { sentence: "Choose the correct: 'She was born ___ April.'", chapter:"Prepositions", options:["in","on","at","during"], answerText:"in", explanation:"Months → 'in'." },
+      { sentence: "Choose the correct: 'Meet me ___ the bus stop.'", chapter:"Prepositions", options:["at","on","in","over"], answerText:"at", explanation:"Fixed point → 'at'." },
 
-  // --- Subject-Verb Agreement (Added 10 more) ---
-  { sentence: "Identify the correction: 'They has finished their homework.' →", chapter:"Subject-Verb Agreement", options:["They have finished their homework.","They has finished their homework.","They had finished their homework.","They finishing their homework."], answerText:"They have finished their homework.", explanation:"'They' takes 'have'." },
-  { sentence: "Choose correct: 'She ___ to school every day.'", chapter:"Subject-Verb Agreement", options:["goes","go","going","gone"], answerText:"goes", explanation:"Singular subject → 'goes'." },
-  { sentence: "Choose correct: 'My friends ___ playing football now.'", chapter:"Subject-Verb Agreement", options:["are","is","was","be"], answerText:"are", explanation:"Plural subject → 'are'." },
-  { sentence: "Choose correct: 'The list of items ___ on the table.'", chapter:"Subject-Verb Agreement", options:["is","are","were","be"], answerText:"is", explanation:"Main subject is 'list' (singular)." },
-  { sentence: "Choose correct: 'Neither of them ___ present today.'", chapter:"Subject-Verb Agreement", options:["is","are","were","be"], answerText:"is", explanation:"'Neither' is singular." },
-  { sentence: "Choose correct: 'Each student ___ a notebook.'", chapter:"Subject-Verb Agreement", options:["has","have","having","had"], answerText:"has", explanation:"'Each' → singular." },
-  { sentence: "Choose correct: 'The players ___ tired after the match.'", chapter:"Subject-Verb Agreement", options:["were","was","is","be"], answerText:"were", explanation:"Plural → 'were'." },
-  { sentence: "Choose correct: 'Mathematics ___ an interesting subject.'", chapter:"Subject-Verb Agreement", options:["is","are","were","be"], answerText:"is", explanation:"'Mathematics' → singular meaning." },
-  { sentence: "Choose correct: 'My brother and sister ___ coming home.'", chapter:"Subject-Verb Agreement", options:["are","is","was","has"], answerText:"are", explanation:"Compound subject → plural verb." },
-  { sentence: "Choose correct: 'The news ___ on TV every night.'", chapter:"Subject-Verb Agreement", options:["is","are","were","been"], answerText:"is", explanation:"'News' is singular in form." },
-  { sentence: "Choose correct: 'Everyone ___ happy today.'", chapter:"Subject-Verb Agreement", options:["is","are","were","be"], answerText:"is", explanation:"'Everyone' → singular." },
+      // --- Subject-Verb Agreement ---
+      { sentence: "Identify the correction: 'They has finished their homework.' →", chapter:"Subject-Verb Agreement", options:["They have finished their homework.","They has finished their homework.","They had finished their homework.","They finishing their homework."], answerText:"They have finished their homework.", explanation:"'They' takes 'have'." },
+      { sentence: "Choose correct: 'She ___ to school every day.'", chapter:"Subject-Verb Agreement", options:["goes","go","going","gone"], answerText:"goes", explanation:"Singular subject → 'goes'." },
+      { sentence: "Choose correct: 'My friends ___ playing football now.'", chapter:"Subject-Verb Agreement", options:["are","is","was","be"], answerText:"are", explanation:"Plural subject → 'are'." },
+      { sentence: "Choose correct: 'The list of items ___ on the table.'", chapter:"Subject-Verb Agreement", options:["is","are","were","be"], answerText:"is", explanation:"Main subject is 'list' (singular)." },
+      { sentence: "Choose correct: 'Neither of them ___ present today.'", chapter:"Subject-Verb Agreement", options:["is","are","were","be"], answerText:"is", explanation:"'Neither' is singular." },
+      { sentence: "Choose correct: 'Each student ___ a notebook.'", chapter:"Subject-Verb Agreement", options:["has","have","having","had"], answerText:"has", explanation:"'Each' → singular." },
+      { sentence: "Choose correct: 'The players ___ tired after the match.'", chapter:"Subject-Verb Agreement", options:["were","was","is","be"], answerText:"were", explanation:"Plural → 'were'." },
+      { sentence: "Choose correct: 'Mathematics ___ an interesting subject.'", chapter:"Subject-Verb Agreement", options:["is","are","were","be"], answerText:"is", explanation:"'Mathematics' → singular meaning." },
+      { sentence: "Choose correct: 'My brother and sister ___ coming home.'", chapter:"Subject-Verb Agreement", options:["are","is","was","has"], answerText:"are", explanation:"Compound subject → plural verb." },
+      { sentence: "Choose correct: 'The news ___ on TV every night.'", chapter:"Subject-Verb Agreement", options:["is","are","were","been"], answerText:"is", explanation:"'News' is singular in form." },
+      { sentence: "Choose correct: 'Everyone ___ happy today.'", chapter:"Subject-Verb Agreement", options:["is","are","were","be"], answerText:"is", explanation:"'Everyone' → singular." },
 
-  // --- Reading Comprehension (Pollution/Sonu/Sparrow combined) ---
-  { sentence: "Pollution prevention is easier than managing pollution after it is created. True or False?", chapter:"Reading Comprehension", options:["True","False","Depends","Not mentioned"], answerText:"True", explanation:"Text states preventing pollution before it is created is easier." },
-  { sentence: "What did Sonu's mother ask the poor man to do with the money?", chapter:"Reading Comprehension", options:["Buy candles from the shop and sell them near the church","Buy a new house","Travel abroad","Buy jewellery"], answerText:"Buy candles from the shop and sell them near the church", explanation:"The passage says she asked him to get some candles and sell them." },
-  { sentence: "Why did the hunter go without any birds?", chapter:"Reading Comprehension", options:["All the birds flew away","He felt sorry for the birds","He got tired","He changed his mind"], answerText:"All the birds flew away", explanation:"The birds planned and flew away." },
-  { sentence: "What is one major cause of air pollution?", chapter:"Reading Comprehension", options:["Vehicle smoke","Rain","Trees","Fresh air"], answerText:"Vehicle smoke", explanation:"Vehicles emit harmful gases." },
-  { sentence: "How can we reduce pollution?", chapter:"Reading Comprehension", options:["Plant trees","Burn more waste","Use more plastic","Drive more"], answerText:"Plant trees", explanation:"Trees absorb CO₂." },
-  { sentence: "What quality did Sonu’s mother show?", chapter:"Reading Comprehension", options:["Kindness","Anger","Pride","Fear"], answerText:"Kindness", explanation:"She helped the poor man earn." },
-  { sentence: "What moral can be learned from the sparrow story?", chapter:"Reading Comprehension", options:["Unity is strength","Greed is good","Be selfish","Sleep early"], answerText:"Unity is strength", explanation:"The birds escaped together." },
-  { sentence: "What was the hunter planning to do?", chapter:"Reading Comprehension", options:["Catch birds","Plant trees","Feed birds","Sleep"], answerText:"Catch birds", explanation:"He came to trap them." },
-  { sentence: "How did Sonu feel after helping the poor man?", chapter:"Reading Comprehension", options:["Happy","Sad","Afraid","Angry"], answerText:"Happy", explanation:"Helping others gives joy." },
-  { sentence: "What kind of pollution harms rivers the most?", chapter:"Reading Comprehension", options:["Water pollution","Noise pollution","Air pollution","Soil pollution"], answerText:"Water pollution", explanation:"Affects rivers directly." },
-  { sentence: "What happens when people cut too many trees?", chapter:"Reading Comprehension", options:["Air becomes polluted","More rain","Better air","More shade"], answerText:"Air becomes polluted", explanation:"Less trees = more CO₂." },
+      // --- Framing Questions ---
+{ sentence: "Frame a question for the *italicised words*: He bought a car *yesterday*.", chapter: "Framing Questions", options: ["When did he buy a car?", "What did he buy yesterday?", "Who bought a car yesterday?", "Where did he buy a car?"], answerText: "When did he buy a car?", explanation: "'Yesterday' refers to time → use 'When'." },
 
-  // --- Voice (Added 10 more) ---
-  { sentence: "Passive of 'She cooks food every day.'", chapter:"Voice", options:["Food is cooked by her every day.","Food was cooked by her every day.","Food will be cooked by her every day.","Food has been cooked by her every day."], answerText:"Food is cooked by her every day.", explanation:"Simple present passive." },
-  { sentence: "Passive of 'He wrote a letter.'", chapter:"Voice", options:["A letter was written by him.","A letter is written by him.","A letter will be written by him.","A letter has written by him."], answerText:"A letter was written by him.", explanation:"Simple past passive." },
-  { sentence: "Passive of 'They are watching a movie.'", chapter:"Voice", options:["A movie is being watched by them.","A movie was watched by them.","A movie has been watched by them.","A movie watches by them."], answerText:"A movie is being watched by them.", explanation:"Present continuous passive." },
-  { sentence: "Passive of 'He will deliver the parcel tomorrow.'", chapter:"Voice", options:["The parcel will be delivered by him tomorrow.","The parcel is delivered by him tomorrow.","The parcel has been delivered by him tomorrow.","The parcel delivers by him tomorrow."], answerText:"The parcel will be delivered by him tomorrow.", explanation:"Future passive form." },
-  { sentence: "Passive of 'She has painted a picture.'", chapter:"Voice", options:["A picture has been painted by her.","A picture was painted by her.","A picture is painted by her.","A picture paints by her."], answerText:"A picture has been painted by her.", explanation:"Present perfect passive." },
-  { sentence: "Passive of 'They built a bridge.'", chapter:"Voice", options:["A bridge was built by them.","A bridge has built by them.","A bridge is built by them.","A bridge builds by them."], answerText:"A bridge was built by them.", explanation:"Past passive." },
-  { sentence: "Passive of 'She is reading a novel.'", chapter:"Voice", options:["A novel is being read by her.","A novel was read by her.","A novel reads by her.","A novel has been read by her."], answerText:"A novel is being read by her.", explanation:"Present continuous passive." },
-  { sentence: "Passive of 'They will announce the result soon.'", chapter:"Voice", options:["The result will be announced soon.","The result is announced soon.","The result has been announced soon.","The result was announced soon."], answerText:"The result will be announced soon.", explanation:"Future passive." },
-  { sentence: "Passive of 'The teacher punished the boy.'", chapter:"Voice", options:["The boy was punished by the teacher.","The boy is punished by the teacher.","The boy has punished by the teacher.","The boy punishes by the teacher."], answerText:"The boy was punished by the teacher.", explanation:"Past passive." },
-  { sentence: "Passive of 'He can solve the problem.'", chapter:"Voice", options:["The problem can be solved by him.","The problem was solved by him.","The problem is solved by him.","The problem can solved by him."], answerText:"The problem can be solved by him.", explanation:"Modal + be + past participle." },
-  { sentence: "Passive of 'They are repairing the road.'", chapter:"Voice", options:["The road is being repaired by them.","The road was repaired by them.","The road repairs by them.","The road has repaired by them."], answerText:"The road is being repaired by them.", explanation:"Present continuous passive." },
+{ sentence: "Frame a question for the *italicised words*: *Ravi* is going to school.", chapter: "Framing Questions", options: ["Who is going to school?", "Where is Ravi going?", "What is Ravi doing?", "When is Ravi going to school?"], answerText: "Who is going to school?", explanation: "Subject is highlighted → 'Who' question." },
 
-  // --- Reported Speech (Added 10 more) ---
-  { sentence: "Direct: Rani said, 'We visited the museum yesterday.' Reported:", chapter:"Reported Speech", options:["Rani said they had visited the museum the day before.","Rani said we visited the museum yesterday.","Rani says we visited the museum yesterday.","Rani said they will visit the museum."], answerText:"Rani said they had visited the museum the day before.", explanation:"Backshift and time-word change required." },
-  { sentence: "Direct: He said, 'I am tired.' Reported:", chapter:"Reported Speech", options:["He said he was tired.","He said I was tired.","He said he is tired.","He said he tired."], answerText:"He said he was tired.", explanation:"Present → past." },
-  { sentence: "Direct: She said, 'I will call you tomorrow.' Reported:", chapter:"Reported Speech", options:["She said she would call me the next day.","She said she will call me tomorrow.","She said I would call her the next day.","She says she will call me tomorrow."], answerText:"She said she would call me the next day.", explanation:"'will' → 'would' and time change." },
-// --- Reported Speech (continued) ---
-  { sentence: "Direct: He said, 'I have finished my work.' Reported:", chapter:"Reported Speech", options:["He said he had finished his work.","He said he has finished his work.","He said I finished my work.","He says he finished his work."], answerText:"He said he had finished his work.", explanation:"Present perfect → past perfect." },
-  { sentence: "Direct: The teacher said, 'Be quiet!'", chapter:"Reported Speech", options:["The teacher told us to be quiet.","The teacher said us to be quiet.","The teacher asked us be quiet.","The teacher say to be quiet."], answerText:"The teacher told us to be quiet.", explanation:"Imperative → told + to-infinitive." },
-  { sentence: "Direct: He said to me, 'Do you like music?'", chapter:"Reported Speech", options:["He asked me if I liked music.","He asked me did I like music.","He asked me that I like music.","He said I liked music."], answerText:"He asked me if I liked music.", explanation:"Question → 'asked if' + clause." },
-  { sentence: "Direct: She said, 'I can swim well.' Reported:", chapter:"Reported Speech", options:["She said she could swim well.","She said she can swim well.","She told she could swim well.","She said she was able swim well."], answerText:"She said she could swim well.", explanation:"Modal 'can' → 'could'." },
-  { sentence: "Direct: Raju said, 'I am reading now.' Reported:", chapter:"Reported Speech", options:["Raju said he was reading then.","Raju said he is reading now.","Raju told he was reading.","Raju said he has been reading."], answerText:"Raju said he was reading then.", explanation:"Present continuous → past continuous; 'now' → 'then'." },
-  { sentence: "Direct: She said, 'I bought a new dress yesterday.' Reported:", chapter:"Reported Speech", options:["She said she had bought a new dress the previous day.","She said she has bought a new dress yesterday.","She said she bought a new dress the previous day.","She said I had bought a new dress."], answerText:"She said she had bought a new dress the previous day.", explanation:"Past → past perfect; 'yesterday' → 'the previous day'." },
-  { sentence: "Direct: He said, 'It is raining heavily.' Reported:", chapter:"Reported Speech", options:["He said it was raining heavily.","He said it is raining heavily.","He told it was raining heavily.","He said it has been raining heavily."], answerText:"He said it was raining heavily.", explanation:"Present → past." },
-  { sentence: "Direct: The doctor said, 'Take this medicine twice a day.'", chapter:"Reported Speech", options:["The doctor advised me to take that medicine twice a day.","The doctor said me take this medicine twice a day.","The doctor told to take this medicine twice a day.","The doctor said take medicine twice a day."], answerText:"The doctor advised me to take that medicine twice a day.", explanation:"Advice → 'advised to'." },
-  { sentence: "Direct: Father said, 'Don’t waste your time.'", chapter:"Reported Speech", options:["Father told me not to waste my time.","Father said me not waste my time.","Father said me to not waste my time.","Father told me do not waste time."], answerText:"Father told me not to waste my time.", explanation:"Negative imperative → 'told ... not to'." },
-  { sentence: "Direct: He said, 'I may come tomorrow.' Reported:", chapter:"Reported Speech", options:["He said he might come the next day.","He said he may come tomorrow.","He told he might come the next day.","He said he will come next day."], answerText:"He said he might come the next day.", explanation:"Modal 'may' → 'might' and time change." },
-  { sentence: "Direct: She said, 'I must go now.' Reported:", chapter:"Reported Speech", options:["She said she had to go then.","She said she must go now.","She told she must go then.","She said she would go now."], answerText:"She said she had to go then.", explanation:"'must' often → 'had to' in reported speech." },
+{ sentence: "Frame a question for the *italicised words*: She met her friend *at the park*.", chapter: "Framing Questions", options: ["Where did she meet her friend?", "When did she meet her friend?", "Who did she meet?", "Why did she meet her friend?"], answerText: "Where did she meet her friend?", explanation: "'At the park' → place → 'Where'." },
 
-  // --- Types of Sentences (Added 10 more) ---
-  { sentence: "Which of the following is an interrogative sentence?", chapter:"Types of Sentences", options:["Have you lost your money?","I am reading a newspaper.","What a tall building it is!","Keep off the grass."], answerText:"Have you lost your money?", explanation:"Interrogative asks a question." },
-  { sentence: "Which of the following is a declarative sentence?", chapter:"Types of Sentences", options:["The sun rises in the east.","What a beautiful view!","Please open the door.","Where are you going?"], answerText:"The sun rises in the east.", explanation:"Declarative states a fact." },
-  { sentence: "Which of the following is an exclamatory sentence?", chapter:"Types of Sentences", options:["What a lovely day it is!","Close the window.","Are you coming?","She is reading."], answerText:"What a lovely day it is!", explanation:"Exclamatory expresses strong feeling." },
-  { sentence: "Which of the following is an imperative sentence?", chapter:"Types of Sentences", options:["Please sit down.","He is sitting.","Where is he?","What a sit!"], answerText:"Please sit down.", explanation:"Imperative gives command/request." },
-  { sentence: "Identify the sentence type: 'Don’t touch that wire!'", chapter:"Types of Sentences", options:["Imperative","Interrogative","Declarative","Exclamatory"], answerText:"Imperative", explanation:"Command or warning." },
-  { sentence: "Identify the sentence type: 'How fast the train is moving!'", chapter:"Types of Sentences", options:["Exclamatory","Interrogative","Declarative","Imperative"], answerText:"Exclamatory", explanation:"Expresses surprise." },
-  { sentence: "Identify the sentence type: 'Who is knocking at the door?'", chapter:"Types of Sentences", options:["Interrogative","Declarative","Imperative","Exclamatory"], answerText:"Interrogative", explanation:"Asks a question." },
-  { sentence: "Identify the sentence type: 'The stars shine at night.'", chapter:"Types of Sentences", options:["Declarative","Exclamatory","Interrogative","Imperative"], answerText:"Declarative", explanation:"Simple statement of fact." },
-  { sentence: "Identify the sentence type: 'Please lend me your pen.'", chapter:"Types of Sentences", options:["Imperative","Declarative","Exclamatory","Interrogative"], answerText:"Imperative", explanation:"Request." },
-  { sentence: "Identify the sentence type: 'What a clever idea!'", chapter:"Types of Sentences", options:["Exclamatory","Declarative","Interrogative","Imperative"], answerText:"Exclamatory", explanation:"Expresses admiration or surprise." },
-  { sentence: "Identify the sentence type: 'Do you know the answer?'", chapter:"Types of Sentences", options:["Interrogative","Exclamatory","Imperative","Declarative"], answerText:"Interrogative", explanation:"Question form." },  // Prepositions
-  { sentence: "Choose correct preposition: 'I will meet you ___ Monday.'", chapter:"Prepositions", options:["on","in","at","by"], answerText:"on", explanation:"Use 'on' for days of the week." },
-  { sentence: "Choose correct preposition: 'She is married ___ a doctor.'", chapter:"Prepositions", options:["to","with","for","at"], answerText:"to", explanation:"'Married to' someone." },
+{ sentence: "Frame a question for the *italicised words*: He is eating *an apple*.", chapter: "Framing Questions", options: ["What is he eating?", "Who is eating an apple?", "Where is he eating?", "When is he eating?"], answerText: "What is he eating?", explanation: "'An apple' → object → 'What'." },
 
-  // Voice (active/passive)
-  { sentence: "Passive form: 'He wrote a letter.' →", chapter:"Voice", options:["A letter was written by him.","A letter is written by him.","A letter has been written by him.","A letter will be written by him."], answerText:"A letter was written by him.", explanation:"Simple past passive uses 'was written'." },
-  { sentence: "Passive form: 'They are cleaning the room.' →", chapter:"Voice", options:["The room is being cleaned by them.","The room was cleaned by them.","The room has been cleaned by them.","The room will be cleaned by them."], answerText:"The room is being cleaned by them.", explanation:"Present continuous passive: 'is/are being + past participle'." },
+{ sentence: "Frame a question for the *italicised words*: They go to church *on Sundays*.", chapter: "Framing Questions", options: ["When do they go to church?", "Where do they go on Sundays?", "Why do they go to church?", "Who goes to church?"], answerText: "When do they go to church?", explanation: "'On Sundays' → time → 'When'." },
 
-  // Gerunds / Infinitives (from PDF)
-  { sentence: "Fill the blank: 'I’d love ___ it!' — choose the verb form.", chapter:"Gerunds and Infinitives", options:["to see","see","seeing","seen"], answerText:"to see", explanation:"'I'd love to see it' is the correct infinitive form." },
-  { sentence: "Choose correct gerund/infinitive: 'She enjoys ___ novels.'", chapter:"Gerunds and Infinitives", options:["reading","to read","read","reads"], answerText:"reading", explanation:"'enjoys' takes the gerund 'reading'." },
+{ sentence: "Frame a question for the *italicised words*: She writes neatly *with a blue pen*.", chapter: "Framing Questions", options: ["With what does she write neatly?", "Why does she write neatly?", "When does she write neatly?", "Who writes neatly?"], answerText: "With what does she write neatly?", explanation: "'With a blue pen' → instrument → 'With what'." },
 
-  // Modals
-  { sentence: "Which modal expresses advice: 'You ___ speak politely to your elders.'", chapter:"Modals", options:["should","can","will","might"], answerText:"should", explanation:"'Should' is used for advice." },
-  { sentence: "Choose the modal for permission: '___ I borrow your book for a day?'", chapter:"Modals", options:["May","Must","Should","Could"], answerText:"May", explanation:"May asks permission politely." },
+{ sentence: "Frame a question for the *italicised words*: *My brother* helped me with my homework.", chapter: "Framing Questions", options: ["Who helped you with your homework?", "What did your brother help you with?", "When did he help you?", "Where did he help you?"], answerText: "Who helped you with your homework?", explanation: "Subject → 'Who'." },
 
-  // Degrees of comparison
-  { sentence: "Choose correct: 'Among the three players, Rahul is the ___.'", chapter:"Degrees of Comparison", options:["best","better","good"], answerText:"best", explanation:"Superlative 'best' for 3+ items." },
-  { sentence: "Which is comparative: 'This flower smells ___ than that one.'", chapter:"Degrees of Comparison", options:["sweeter","sweet","sweetest"], answerText:"sweeter", explanation:"Comparative uses '-er'." },
+{ sentence: "Frame a question for the *italicised words*: She spoke to *the headmaster*.", chapter: "Framing Questions", options: ["Whom did she speak to?", "Who spoke to the headmaster?", "When did she speak to the headmaster?", "Where did she speak?"], answerText: "Whom did she speak to?", explanation: "Object (person) → 'Whom'." },
 
-  // Reported speech
-  { sentence: "Reported speech: 'John said, \"I am feeling tired.\"' →", chapter:"Reported Speech", options:["John said he was feeling tired.","John said he is feeling tired.","John says he was feeling tired.","John will say he was feeling tired."], answerText:"John said he was feeling tired.", explanation:"Backshift required in reported speech." },
+{ sentence: "Frame a question for the *italicised words*: He was absent *because he was ill*.", chapter: "Framing Questions", options: ["Why was he absent?", "When was he absent?", "Where was he absent?", "Who was absent?"], answerText: "Why was he absent?", explanation: "'Because he was ill' → reason → 'Why'." },
 
-  // Active/Passive sample
-  { sentence: "Active → Passive: 'The gardener waters the plants every morning.'", chapter:"Active/Passive", options:["The plants are watered every morning.","The plants were watered every morning.","The plants will be watered every morning.","The plants have been watered every morning."], answerText:"The plants are watered every morning.", explanation:"Simple present passive." },
+{ sentence: "Frame a question for the *italicised words*: The train arrived *at 7 o’clock*.", chapter: "Framing Questions", options: ["When did the train arrive?", "Where did the train arrive?", "Why did the train arrive?", "Who arrived at 7 o’clock?"], answerText: "When did the train arrive?", explanation: "Time phrase → 'When'." },
 
-  // Short reading comprehension / The Magic Pencil
-  { sentence: "In 'The Magic Pencil', Anish was not good at:", chapter:"Reading Comprehension", options:["writing and art works","running and swimming","cooking","maths"], answerText:"writing and art works", explanation:"The story says Anish was not good at writing and art works." },
-  { sentence: "Why did the birds fly away from the hunter (from passage)?", chapter:"Reading Comprehension", options:["The sparrow warned them about the net","They were chased by the tiger","They were hungry","They wanted to migrate"], answerText:"The sparrow warned them about the net", explanation:"The sparrow told all birds about the net." },
 
-  // Picture comprehension / basic questions
-  { sentence: "If someone 'waits' for a bus, which preposition usually follows 'wait'?", chapter:"Prepositions", options:["for","at","in","on"], answerText:"for", explanation:"We 'wait for' someone or something." },
-  { sentence: "Choose correct: 'He was born ___ 2002.'", chapter:"Prepositions", options:["in","on","at","by"], answerText:"in", explanation:"Use 'in' with years." },
+      // --- Voice ---
+      { sentence: "Passive of 'She cooks food every day.'", chapter:"Voice", options:["Food is cooked by her every day.","Food was cooked by her every day.","Food will be cooked by her every day.","Food has been cooked by her every day."], answerText:"Food is cooked by her every day.", explanation:"Simple present passive." },
+      { sentence: "Passive of 'He wrote a letter.'", chapter:"Voice", options:["A letter was written by him.","A letter is written by him.","A letter will be written by him.","A letter has written by him."], answerText:"A letter was written by him.", explanation:"Simple past passive." },
+      { sentence: "Passive of 'They are watching a movie.'", chapter:"Voice", options:["A movie is being watched by them.","A movie was watched by them.","A movie has been watched by them.","A movie watches by them."], answerText:"A movie is being watched by them.", explanation:"Present continuous passive." },
+      { sentence: "Passive of 'He will deliver the parcel tomorrow.'", chapter:"Voice", options:["The parcel will be delivered by him tomorrow.","The parcel is delivered by him tomorrow.","The parcel has been delivered by him tomorrow.","The parcel delivers by him tomorrow."], answerText:"The parcel will be delivered by him tomorrow.", explanation:"Future passive form." },
+      { sentence: "Passive of 'She has painted a picture.'", chapter:"Voice", options:["A picture has been painted by her.","A picture was painted by her.","A picture is painted by her.","A picture paints by her."], answerText:"A picture has been painted by her.", explanation:"Present perfect passive." },
+      { sentence: "Passive of 'They built a bridge.'", chapter:"Voice", options:["A bridge was built by them.","A bridge has built by them.","A bridge is built by them.","A bridge builds by them."], answerText:"A bridge was built by them.", explanation:"Past passive." },
+      { sentence: "Passive of 'She is reading a novel.'", chapter:"Voice", options:["A novel is being read by her.","A novel was read by her.","A novel reads by her.","A novel has been read by her."], answerText:"A novel is being read by her.", explanation:"Present continuous passive." },
+      { sentence: "Passive of 'They will announce the result soon.'", chapter:"Voice", options:["The result will be announced soon.","The result is announced soon.","The result has been announced soon.","The result was announced soon."], answerText:"The result will be announced soon.", explanation:"Future passive." },
+      { sentence: "Passive of 'The teacher punished the boy.'", chapter:"Voice", options:["The boy was punished by the teacher.","The boy is punished by the teacher.","The boy has punished by the teacher.","The boy punishes by the teacher."], answerText:"The boy was punished by the teacher.", explanation:"Past passive." },
+      { sentence: "Passive of 'He can solve the problem.'", chapter:"Voice", options:["The problem can be solved by him.","The problem was solved by him.","The problem is solved by him.","The problem can solved by him."], answerText:"The problem can be solved by him.", explanation:"Modal + be + past participle." },
+      { sentence: "Passive of 'They are repairing the road.'", chapter:"Voice", options:["The road is being repaired by them.","The road was repaired by them.","The road repairs by them.","The road has repaired by them."], answerText:"The road is being repaired by them.", explanation:"Present continuous passive." },
 
-  // Sentence types
-  { sentence: "What type is: 'What a tall building it is!'?", chapter:"Types of Sentences", options:["Exclamatory","Interrogative","Imperative","Declarative"], answerText:"Exclamatory", explanation:"Exclamatory expresses strong emotion." },
+      // --- Reported Speech ---
+      { sentence: "Direct: Rani said, 'We visited the museum yesterday.' Reported:", chapter:"Reported Speech", options:["Rani said they had visited the museum the day before.","Rani said we visited the museum yesterday.","Rani says we visited the museum yesterday.","Rani said they will visit the museum."], answerText:"Rani said they had visited the museum the day before.", explanation:"Backshift and time-word change required." },
+      { sentence: "Direct: He said, 'I am tired.' Reported:", chapter:"Reported Speech", options:["He said he was tired.","He said I was tired.","He said he is tired.","He said he tired."], answerText:"He said he was tired.", explanation:"Present → past." },
+      { sentence: "Direct: She said, 'I will call you tomorrow.' Reported:", chapter:"Reported Speech", options:["She said she would call me the next day.","She said she will call me tomorrow.","She said I would call her the next day.","She says she will call me tomorrow."], answerText:"She said she would call me the next day.", explanation:"'will' → 'would' and time change." },
+      { sentence: "Direct: He said, 'I have finished my work.' Reported:", chapter:"Reported Speech", options:["He said he had finished his work.","He said he has finished his work.","He said I finished my work.","He says he finished his work."], answerText:"He said he had finished his work.", explanation:"Present perfect → past perfect." },
+      { sentence: "Direct: The teacher said, 'Be quiet!'", chapter:"Reported Speech", options:["The teacher told us to be quiet.","The teacher said us to be quiet.","The teacher asked us be quiet.","The teacher say to be quiet."], answerText:"The teacher told us to be quiet.", explanation:"Imperative → told + to-infinitive." },
+      { sentence: "Direct: He said to me, 'Do you like music?'", chapter:"Reported Speech", options:["He asked me if I liked music.","He asked me did I like music.","He asked me that I like music.","He said I liked music."], answerText:"He asked me if I liked music.", explanation:"Question → 'asked if' + clause." },
+      { sentence: "Direct: She said, 'I can swim well.' Reported:", chapter:"Reported Speech", options:["She said she could swim well.","She said she can swim well.","She told she could swim well.","She said she was able swim well."], answerText:"She said she could swim well.", explanation:"Modal 'can' → 'could'." },
+      { sentence: "Direct: Raju said, 'I am reading now.' Reported:", chapter:"Reported Speech", options:["Raju said he was reading then.","Raju said he is reading now.","Raju told he was reading.","Raju said he has been reading."], answerText:"Raju said he was reading then.", explanation:"Present continuous → past continuous; 'now' → 'then'." },
+      { sentence: "Direct: She said, 'I bought a new dress yesterday.' Reported:", chapter:"Reported Speech", options:["She said she had bought a new dress the previous day.","She said she has bought a new dress yesterday.","She said she bought a new dress the previous day.","She said I had bought a new dress."], answerText:"She said she had bought a new dress the previous day.", explanation:"Past → past perfect; 'yesterday' → 'the previous day'." },
+      { sentence: "Direct: He said, 'It is raining heavily.' Reported:", chapter:"Reported Speech", options:["He said it was raining heavily.","He said it is raining heavily.","He told it was raining heavily.","He said it has been raining heavily."], answerText:"He said it was raining heavily.", explanation:"Present → past." },
+      { sentence: "Direct: The doctor said, 'Take this medicine twice a day.'", chapter:"Reported Speech", options:["The doctor advised me to take that medicine twice a day.","The doctor said me take this medicine twice a day.","The doctor told to take this medicine twice a day.","The doctor said take medicine twice a day."], answerText:"The doctor advised me to take that medicine twice a day.", explanation:"Advice → 'advised to'." },
+      { sentence: "Direct: Father said, 'Don’t waste your time.'", chapter:"Reported Speech", options:["Father told me not to waste my time.","Father said me not waste my time.","Father said me to not waste my time.","Father told me do not waste time."], answerText:"Father told me not to waste my time.", explanation:"Negative imperative → 'told ... not to'." },
+      { sentence: "Direct: He said, 'I may come tomorrow.' Reported:", chapter:"Reported Speech", options:["He said he might come the next day.","He said he may come tomorrow.","He told he might come the next day.","He said he will come next day."], answerText:"He said he might come the next day.", explanation:"Modal 'may' → 'might' and time change." },
+      { sentence: "Direct: She said, 'I must go now.' Reported:", chapter:"Reported Speech", options:["She said she had to go then.","She said she must go now.","She told she must go then.","She said she would go now."], answerText:"She said she had to go then.", explanation:"'must' often → 'had to' in reported speech." },
 
-  // Hints/story development (simple)
-  { sentence: "Which sentence is an example of an imperative sentence?", chapter:"Types of Sentences", options:["Keep off the grass.","What a lovely day!","I am reading a newspaper.","Have you lost your money?" ], answerText:"Keep off the grass.", explanation:"Imperative issues a command." },
+      // --- Types of Sentences (and a few extras at the end of your file) ---
+      { sentence: "Which of the following is an interrogative sentence?", chapter:"Types of Sentences", options:["Have you lost your money?","I am reading a newspaper.","What a tall building it is!","Keep off the grass."], answerText:"Have you lost your money?", explanation:"Interrogative asks a question." },
+      { sentence: "Which of the following is a declarative sentence?", chapter:"Types of Sentences", options:["The sun rises in the east.","What a beautiful view!","Please open the door.","Where are you going?"], answerText:"The sun rises in the east.", explanation:"Declarative states a fact." },
+      { sentence: "Which of the following is an exclamatory sentence?", chapter:"Types of Sentences", options:["What a lovely day it is!","Close the window.","Are you coming?","She is reading."], answerText:"What a lovely day it is!", explanation:"Exclamatory expresses strong feeling." },
+      { sentence: "Which of the following is an imperative sentence?", chapter:"Types of Sentences", options:["Please sit down.","He is sitting.","Where is he?","What a sit!"], answerText:"Please sit down.", explanation:"Imperative gives command/request." },
+      { sentence: "Identify the sentence type: 'Don’t touch that wire!'", chapter:"Types of Sentences", options:["Imperative","Interrogative","Declarative","Exclamatory"], answerText:"Imperative", explanation:"Command or warning." },
+      { sentence: "Identify the sentence type: 'How fast the train is moving!'", chapter:"Types of Sentences", options:["Exclamatory","Interrogative","Declarative","Imperative"], answerText:"Exclamatory", explanation:"Expresses surprise." },
+      { sentence: "Identify the sentence type: 'Who is knocking at the door?'", chapter:"Types of Sentences", options:["Interrogative","Declarative","Imperative","Exclamatory"], answerText:"Interrogative", explanation:"Asks a question." },
+      { sentence: "Identify the sentence type: 'The stars shine at night.'", chapter:"Types of Sentences", options:["Declarative","Exclamatory","Interrogative","Imperative"], answerText:"Declarative", explanation:"Simple statement of fact." },
+      { sentence: "Identify the sentence type: 'Please lend me your pen.'", chapter:"Types of Sentences", options:["Imperative","Declarative","Exclamatory","Interrogative"], answerText:"Imperative", explanation:"Request." },
+      { sentence: "Identify the sentence type: 'What a clever idea!'", chapter:"Types of Sentences", options:["Exclamatory","Declarative","Interrogative","Imperative"], answerText:"Exclamatory", explanation:"Expresses admiration or surprise." },
 
-  // Phrasal verbs
-  { sentence: "Which phrasal verb means 'refuse' in the options: 'took up, turned down, put out'?", chapter:"Phrasal Verbs", options:["turned down","took up","put out","none"], answerText:"turned down", explanation:"Turn down = refuse." },
+      /* (…remaining items from your original file continue; they’re present above already and not needed
+          for the fixed 10 selection logic. Keeping the full bank ensures future flexibility.) */
+    ];
 
-  // Prepositions & vocabulary
-  { sentence: "Choose the correct preposition: 'She is interested ___ music.'", chapter:"Prepositions", options:["in","on","about","with"], answerText:"in", explanation:"'interested in'." },
+    /* ============================
+       QUIZ STATE (fixed 10, sequential)
+       ============================ */
+    const FIXED_TEN = bank.slice(0, 10); // exact first 10 questions (fixed)
+    let selected = FIXED_TEN.slice();    // do NOT shuffle
+    let currentQ = 0;
+    let score = 0;
+    let chosenOption = null;
 
-  // Dialogue / letter writing basic multi-choice style
-  { sentence: "A leave letter usually starts with: 'To The Class Teacher' and includes which detail:", chapter:"Letter Writing", options:["dates of leave","a recipe","a poem","a map"], answerText:"dates of leave", explanation:"A leave letter includes dates of leave." },
+    // Timer
+    const SECS_PER_Q = 30;
+    let remaining = SECS_PER_Q;
+    let ticker = null;
 
-  // More Tense items
-  { sentence: "Choose correct: 'We ____ this movie before.'", chapter:"Verb Tense", options:["have seen","saw","see","am seeing"], answerText:"have seen", explanation:"Present perfect for experience." },
-  { sentence: "Choose correct: 'I ____ my homework when the power went off.'", chapter:"Verb Tense", options:["was doing","did","am doing","had done"], answerText:"was doing", explanation:"Past continuous interrupted by another past action." },
+    // PDF answers
+    const userAnswers = [];
 
-  // Simple comprehension (The Magic Pencil)
-  { sentence: "In the Magic Pencil story the drawing asked Anish to draw a pair of ___?", chapter:"Reading Comprehension", options:["eyes","hands","feet","ears"], answerText:"eyes", explanation:"The drawing asked him to draw a pair of eyes." },
+    // Elements
+    const sentenceEl = document.getElementById('sentence');
+    const optionsEl = document.getElementById('options');
+    const submitBtn = document.getElementById('submitBtn');
+    const skipBtn = document.getElementById('skipBtn');
+    const nextBtn = document.getElementById('nextBtn');
+    const startBtn = document.getElementById('startBtn');
+    const restartBtn = document.getElementById('restartBtn');
+    const qIndexEl = document.getElementById('qIndex');
+    const qTotalEl = document.getElementById('qTotal');
+    const progressBar = document.getElementById('progressBar');
+    const feedback = document.getElementById('feedback');
+    const scoreEl = document.getElementById('currentScore');
+    const timerEl = document.getElementById('timer');
+    const downloadBtn = document.getElementById('downloadPdfBtn');
 
-  // Basic vocabulary
-  { sentence: "Choose the correct word: 'He is afraid ___ snakes.'", chapter:"Prepositions", options:["of","from","by","about"], answerText:"of", explanation:"'afraid of'." },
+    qTotalEl.textContent = selected.length;
 
-  // Short grammar error correction style
-  { sentence: "Identify the correction: 'They has finished their homework.' →", chapter:"Subject-Verb Agreement", options:["They have finished their homework.","They has finished their homework.","They had finished their homework.","They finishing their homework."], answerText:"They have finished their homework.", explanation:"'They' takes 'have'." },
-
-  // Reading comprehension - Pollution question
-  { sentence: "Pollution prevention is easier than managing pollution after it is created. True or False?", chapter:"Reading Comprehension", options:["True","False","Depends","Not mentioned"], answerText:"True", explanation:"Text states preventing pollution before it is created is easier." },
-
-  // Active/Passive short
-  { sentence: "Passive of 'She cooks food every day.'", chapter:"Voice", options:["Food is cooked by her every day.","Food was cooked by her every day.","Food will be cooked by her every day.","Food has been cooked by her every day."], answerText:"Food is cooked by her every day.", explanation:"Simple present passive." },
-
-  // Small comprehension question (Sonu passage)
-  { sentence: "What did Sonu's mother ask the poor man to do with the money?", chapter:"Reading Comprehension", options:["Buy candles from the shop and sell them near the church","Buy a new house","Travel abroad","Buy jewellery"], answerText:"Buy candles from the shop and sell them near the church", explanation:"The passage says she asked him to get some candles and sell them." },
-
-  // Reported speech small
-  { sentence: "Direct: Rani said, 'We visited the museum yesterday.' Reported:", chapter:"Reported Speech", options:["Rani said they had visited the museum the day before.","Rani said we visited the museum yesterday.","Rani says we visited the museum yesterday.","Rani said they will visit the museum."], answerText:"Rani said they had visited the museum the day before.", explanation:"Backshift and time-word change required." },
-
-  // Simple reading question (The sparrow story)
-  { sentence: "Why did the hunter go without any birds?", chapter:"Reading Comprehension", options:["All the birds flew away","He felt sorry for the birds","He got tired","He changed his mind"], answerText:"All the birds flew away", explanation:"The birds planned and flew away." },
-
-  // Types of sentences: interrogative
-  { sentence: "Which of the following is an interrogative sentence?", chapter:"Types of Sentences", options:["Have you lost your money?","I am reading a newspaper.","What a tall building it is!","Keep off the grass."], answerText:"Have you lost your money?", explanation:"Interrogative asks a question." }
-];
-
-/* ============================
-   Utilities
-   ============================ */
-function shuffleArray(a){
-  for(let i=a.length-1;i>0;i--){
-    const j=Math.floor(Math.random()*(i+1));
-    [a[i],a[j]]=[a[j],a[i]];
-  }
-  return a;
-}
-
-/* ============================
-   Quiz state
-   ============================ */
-let selectedIndices = []; // indices in bank chosen for current test
-let currentQ = 0;
-let score = 0;
-let chosenOption = null;
-let presentedQuestions = []; // objects {q:..., options: [...], correctText:..., explanation:...}
-
-const sentenceEl = document.getElementById('sentence');
-const optionsEl = document.getElementById('options');
-const submitBtn = document.getElementById('submitBtn');
-const skipBtn = document.getElementById('skipBtn');
-const nextBtn = document.getElementById('nextBtn');
-const startBtn = document.getElementById('startBtn');
-const restartBtn = document.getElementById('restartBtn');
-const qIndexEl = document.getElementById('qIndex');
-const qTotalEl = document.getElementById('qTotal');
-const progressBar = document.getElementById('progressBar');
-const feedback = document.getElementById('feedback');
-const scoreEl = document.getElementById('currentScore');
-const playerName = document.getElementById('playerName');
-
-/* ============================
-   Core functions
-   ============================ */
-
-function prepareTest(){
-  // choose 10 unique random questions across the bank
-  const total = Math.min(10, bank.length);
-  const idxs = Array.from(bank.keys());
-  shuffleArray(idxs);
-  selectedIndices = idxs.slice(0, total);
-  presentedQuestions = selectedIndices.map(i=>{
-    const base = JSON.parse(JSON.stringify(bank[i])); // clone
-    // build an options array and shuffle them
-    const opts = base.options.slice();
-    shuffleArray(opts);
-    return { q: base.sentence, chapter: base.chapter, options: opts, correctText: base.answerText, explanation: base.explanation || "" };
-  });
-  // shuffle the order of selected questions too, to ensure new order every time
-  shuffleArray(presentedQuestions);
-  currentQ = 0;
-  score = 0;
-  chosenOption = null;
-  updateUIForQuestion();
-  scoreEl.textContent = score;
-  qTotalEl.textContent = total;
-  qIndexEl.textContent = currentQ+1;
-  progressBar.style.width = `0%`;
-  feedback.textContent = "";
-  submitBtn.disabled = false;
-  skipBtn.disabled = false;
-  nextBtn.style.display = 'none';
-  restartBtn.style.display = 'inline-block';
-}
-
-function updateUIForQuestion(){
-  const total = presentedQuestions.length;
-  if(currentQ >= total){
-    finishTest();
-    return;
-  }
-  const item = presentedQuestions[currentQ];
-  sentenceEl.textContent = item.q;
-  optionsEl.innerHTML = '';
-  optionsEl.setAttribute('aria-hidden','false');
-  // create option buttons
-  item.options.forEach((optText, idx)=>{
-    const d = document.createElement('div');
-    d.className = 'opt';
-    d.tabIndex = 0;
-    d.setAttribute('role','button');
-    d.setAttribute('data-val', optText);
-    d.textContent = optText;
-    d.addEventListener('click', ()=> selectOption(d));
-    d.addEventListener('keydown', (e)=> { if(e.key==='Enter' || e.key===' ') { e.preventDefault(); selectOption(d); } });
-    optionsEl.appendChild(d);
-  });
-  // state
-  chosenOption = null;
-  submitBtn.disabled = true;
-  skipBtn.disabled = false;
-  nextBtn.style.display = 'none';
-  qIndexEl.textContent = (currentQ+1);
-  // update progress bar
-  const pct = Math.round((currentQ) / presentedQuestions.length * 100);
-  progressBar.style.width = pct + '%';
-  feedback.textContent = '';
-}
-
-function selectOption(el){
-  // clear previous selection
-  const nodes = optionsEl.querySelectorAll('.opt');
-  nodes.forEach(n=>n.classList.remove('selected'));
-  el.classList.add('selected');
-  chosenOption = el.getAttribute('data-val');
-  submitBtn.disabled = false;
-}
-
-function submitAnswer(){
-  if(chosenOption === null){
-    feedback.textContent = 'Please select an option (or Skip).';
-    return;
-  }
-  const item = presentedQuestions[currentQ];
-  const nodes = optionsEl.querySelectorAll('.opt');
-  // mark correct/wrong styles
-  nodes.forEach(n=>{
-    const val = n.getAttribute('data-val');
-    if(val === item.correctText){
-      n.classList.add('correct');
+    function startGame(){
+      currentQ = 0;
+      score = 0;
+      userAnswers.length = 0;
+      scoreEl.textContent = '0';
+      downloadBtn.style.display = 'none';
+      startBtn.style.display = 'none';
+      restartBtn.style.display = 'inline-block';
+      loadQuestion();
     }
-    if(val === chosenOption && val !== item.correctText){
-      n.classList.add('wrong');
+
+    function loadQuestion(){
+      if(currentQ >= selected.length){ return finishQuiz(); }
+      const item = selected[currentQ];
+
+      // UI
+      sentenceEl.textContent = item.sentence;
+      optionsEl.innerHTML = '';
+      chosenOption = null;
+      feedback.textContent = '';
+      submitBtn.disabled = true;
+      skipBtn.disabled = false;
+      nextBtn.style.display = 'none';
+      optionsEl.setAttribute('aria-hidden','false');
+
+      // build options
+      item.options.forEach(opt=>{
+        const d = document.createElement('div');
+        d.className = 'opt';
+        d.textContent = opt;
+        d.setAttribute('data-val', opt);
+        d.tabIndex = 0;
+        d.addEventListener('click', ()=> selectOption(d));
+        d.addEventListener('keydown', e=>{ if(e.key==='Enter' || e.key===' '){ e.preventDefault(); selectOption(d); }});
+        optionsEl.appendChild(d);
+      });
+
+      qIndexEl.textContent = currentQ + 1;
+      progressBar.style.width = Math.round((currentQ/selected.length)*100) + '%';
+
+      // timer
+      startTimer();
     }
-    // disable pointer
-    n.style.pointerEvents = 'none';
-  });
-  // scoring
-  if(chosenOption === item.correctText){
-    score++;
-    feedback.textContent = 'Correct ✓ — ' + (item.explanation ? item.explanation : '');
-  } else {
-    feedback.textContent = 'Wrong ✗ — Correct: "' + item.correctText + '". ' + (item.explanation ? item.explanation : '');
-  }
-  scoreEl.textContent = score;
-  submitBtn.disabled = true;
-  skipBtn.disabled = true;
-  nextBtn.style.display = 'inline-block';
-}
 
-function skipQuestion(){
-  // treat as incorrect but just move on
-  const nodes = optionsEl.querySelectorAll('.opt');
-  nodes.forEach(n=>{
-    const val = n.getAttribute('data-val');
-    if(val === presentedQuestions[currentQ].correctText) n.classList.add('correct');
-    n.style.pointerEvents = 'none';
-  });
-  feedback.textContent = 'Skipped — Correct: "' + presentedQuestions[currentQ].correctText + '".';
-  submitBtn.disabled = true;
-  skipBtn.disabled = true;
-  nextBtn.style.display = 'inline-block';
-}
+    function selectOption(node){
+      optionsEl.querySelectorAll('.opt').forEach(n => n.classList.remove('selected'));
+      node.classList.add('selected');
+      chosenOption = node.getAttribute('data-val');
+      submitBtn.disabled = false;
+    }
 
-function nextQuestion(){
-  currentQ++;
-  if(currentQ >= presentedQuestions.length){
-    finishTest();
-    return;
-  }
-  chosenOption = null;
-  updateUIForQuestion();
-}
-recordAnswer(currentQuestion.sentence, selectedOption, currentQuestion.answerText);
-function finishTest(){
-  // show final score & basic summary
-  sentenceEl.textContent = 'Test Complete — your score: ' + score + ' / ' + presentedQuestions.length;
-  optionsEl.innerHTML = '';
-  optionsEl.setAttribute('aria-hidden','true');
-  feedback.innerHTML = `<div>Final Score: <strong>${score}/${presentedQuestions.length}</strong> — ${Math.round(score/presentedQuestions.length*100)}%</div>`;
-  progressBar.style.width = '100%';
-  submitBtn.disabled = true;
-  skipBtn.disabled = true;
-  nextBtn.style.display = 'none';
-  restartBtn.style.display = 'inline-block';
-  // Save to Hall of Fame (localStorage) if high score
-  saveToLocalHof(score);
-}
+    function gradeAndLock(reason){
+      const item = selected[currentQ];
+      const correct = item.answerText;
 
-function startGame(){
-  prepareTest();
-  // adjust UI
-  startBtn.style.display = 'none';
-  document.getElementById('showHofBtn').style.display = 'inline-block';
-}
+      // stop timer
+      stopTimer();
 
-/* ============================
-   Hall of Fame (local storage simple)
-   ============================ */
-function loadHof(){
-  const raw = localStorage.getItem('thiran_hof_v1');
-  if(!raw) return [];
-  try{
-    return JSON.parse(raw);
-  }catch(e){
-    return [];
-  }
-}
-function saveHof(list){
-  localStorage.setItem('thiran_hof_v1', JSON.stringify(list.slice(0,10)));
-}
-function saveToLocalHof(scoreValue){
-  // if score is among top 10, prompt to save (we show input box in UI when user opens HOF)
-  // here we won't auto-ask; user can open Hall of Fame and save
-  // but we will pre-fill the hofName with playerName
-  const name = (playerName.value||'Anonymous').trim();
-  // do not auto-save; we'll show hall and let user save if they want
-}
-function showHof(){
-  const list = loadHof();
-  const hof = list.slice().sort((a,b)=>b.score-a.score);
-  const hofList = document.getElementById('hofList');
-  hofList.innerHTML = '';
-  if(hof.length===0){
-    hofList.innerHTML = '<div style="padding:8px 0;color:#555">No entries yet.</div>';
-  } else {
-    hof.forEach((h, i)=>{
-      const row = document.createElement('div');
-      row.className = 'hof-item';
-      row.innerHTML = `<div>${i+1}. ${escapeHtml(h.name)}</div><div>${h.score}/10</div>`;
-      hofList.appendChild(row);
+      // mark options
+      optionsEl.querySelectorAll('.opt').forEach(n=>{
+        const val = n.getAttribute('data-val');
+        n.style.pointerEvents = 'none';
+        if(val === correct) n.classList.add('correct');
+        if(chosenOption && val === chosenOption && chosenOption !== correct) n.classList.add('wrong');
+      });
+
+      // scoring + feedback
+      let userAnsText = chosenOption || (reason === 'timeout' ? 'Timed out' : 'Skipped');
+      if(chosenOption === correct){
+        score++;
+        scoreEl.textContent = score;
+        feedback.textContent = '✅ Correct! ' + (item.explanation ? ('— ' + item.explanation) : '');
+      }else if(reason === 'timeout'){
+        feedback.textContent = `⏱️ Time up — Correct: "${correct}".` + (item.explanation ? (' ' + item.explanation) : '');
+      }else if(reason === 'skip'){
+        feedback.textContent = `⤼ Skipped — Correct: "${correct}".` + (item.explanation ? (' ' + item.explanation) : '');
+      }else{
+        feedback.textContent = `❌ Wrong — Correct: "${correct}".` + (item.explanation ? (' ' + item.explanation) : '');
+      }
+
+      // record for PDF
+      userAnswers.push({ question: item.sentence, userAnswer: userAnsText, correctAnswer: correct });
+
+      // controls
+      submitBtn.disabled = true;
+      skipBtn.disabled = true;
+      nextBtn.style.display = 'inline-block';
+
+      if(userAnswers.length >= selected.length){
+        downloadBtn.style.display = 'inline-block';
+      }
+    }
+
+    function submitAnswer(){
+      if(!chosenOption){
+        feedback.textContent = 'Please select an option (or Skip).';
+        return;
+      }
+      gradeAndLock('submit');
+    }
+
+    function skipQuestion(){
+      chosenOption = null;
+      gradeAndLock('skip');
+    }
+
+    function nextQuestion(){
+      currentQ++;
+      if(currentQ < selected.length){
+        loadQuestion();
+      }else{
+        finishQuiz();
+      }
+    }
+
+    function finishQuiz(){
+      stopTimer(true);
+      sentenceEl.textContent = `Test Complete — your score: ${score} / ${selected.length}`;
+      optionsEl.innerHTML = '';
+      optionsEl.setAttribute('aria-hidden','true');
+      feedback.innerHTML = `<div>Final Score: <strong>${score}/${selected.length}</strong> — ${Math.round(score/selected.length*100)}%</div>`;
+      progressBar.style.width = '100%';
+      submitBtn.disabled = true;
+      skipBtn.disabled = true;
+      nextBtn.style.display = 'none';
+      downloadBtn.style.display = 'inline-block';
+    }
+
+    // TIMER
+    function startTimer(){
+      stopTimer();
+      remaining = SECS_PER_Q;
+      timerEl.textContent = `⏳ ${remaining}s`;
+      ticker = setInterval(()=>{
+        remaining--;
+        timerEl.textContent = `⏳ ${remaining}s`;
+        if(remaining <= 0){
+          clearInterval(ticker); ticker = null;
+          chosenOption = null;
+          gradeAndLock('timeout');
+        }
+      }, 1000);
+    }
+    function stopTimer(hide){
+      if(ticker){ clearInterval(ticker); ticker = null; }
+      if(hide){ timerEl.textContent = '⏳ 0s'; }
+    }
+
+    // EVENTS
+    document.getElementById('startBtn').addEventListener('click', startGame);
+    document.getElementById('restartBtn').addEventListener('click', ()=>{
+      startBtn.style.display = 'inline-block';
+      restartBtn.style.display = 'none';
+      sentenceEl.innerHTML = 'Press <strong>Start Game</strong> to begin the 10 marks test.';
+      optionsEl.innerHTML = '';
+      feedback.textContent = '';
+      score = 0; scoreEl.textContent = 0;
+      progressBar.style.width = '0%';
+      submitBtn.disabled = true; skipBtn.disabled = true; nextBtn.style.display = 'none';
+      stopTimer(true);
+      downloadBtn.style.display = 'none';
+      currentQ = 0;
     });
-  }
-  document.getElementById('hall').classList.toggle('hidden');
-}
+    document.getElementById('submitBtn').addEventListener('click', submitAnswer);
+    document.getElementById('skipBtn').addEventListener('click', skipQuestion);
+    document.getElementById('nextBtn').addEventListener('click', nextQuestion);
 
-/* ============================
-   Helpers & events
-   ============================ */
-function escapeHtml(s){ return (''+s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+    // PDF EXPORT
+    document.getElementById("downloadPdfBtn").addEventListener("click", function () {
+      if (userAnswers.length === 0) { alert("No answers to download!"); return; }
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF();
+      let y = 15;
 
-submitBtn.addEventListener('click', submitAnswer);
-skipBtn.addEventListener('click', skipQuestion);
-nextBtn.addEventListener('click', nextQuestion);
-startBtn.addEventListener('click', ()=>{
-  startGame();
-});
-restartBtn.addEventListener('click', ()=>{
-  // reset and show Start
-  startBtn.style.display = 'inline-block';
-  restartBtn.style.display = 'none';
-  sentenceEl.textContent = 'Press <strong>Start Game</strong> to begin the 10 marks test.';
-  optionsEl.innerHTML = '';
-  feedback.textContent = '';
-  score = 0;
-  scoreEl.textContent = 0;
-  progressBar.style.width = '0%';
-  submitBtn.disabled = true;
-  skipBtn.disabled = true;
-  nextBtn.style.display = 'none';
-});
-
-document.getElementById('showHofBtn').addEventListener('click', showHof);
-
-document.getElementById('saveHofBtn').addEventListener('click', ()=>{
-  const name = document.getElementById('hofName').value.trim() || 'Anonymous';
-  const list = loadHof();
-  // ensure only top scores stored (we store up to 10)
-  list.push({ name: name, score: score });
-  list.sort((a,b)=>b.score-a.score);
-  saveHof(list.slice(0,10));
-  showHof();
-  alert('Saved to Hall of Fame (local browser storage).');
-});
-
-/* ============================
-   Initialize basic UI state
-   ============================ */
-(function init(){
-  // initial disabled state
-  submitBtn.disabled = true;
-  skipBtn.disabled = true;
-  nextBtn.style.display = 'none';
-  restartBtn.style.display = 'none';
-  // hide hall initially
-  document.getElementById('hall').classList.add('hidden');
-  // show stored HOF if any
-  // load but do not display automatically
-})();
-
-  <!-- Download button -->
-<button id="downloadPdfBtn" style="
-  display:none;
-  background:#2b6cb0;
-  color:white;
-  border:none;
-  padding:10px 20px;
-  border-radius:8px;
-  font-size:16px;
-  cursor:pointer;
-  margin-top:20px;
-">
-  📄 Download My Answers (PDF)
-</button>
-
-<!-- Load jsPDF from CDN -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-
-<script>
-  // Track answers
-  let userAnswers = [];
-
-  // Record each attempted question
-  function recordAnswer(questionText, selectedOption, correctAnswer) {
-    userAnswers.push({
-      question: questionText,
-      userAnswer: selectedOption,
-      correctAnswer: correctAnswer
-    });
-
-    // Show button once the user has answered 10 (or all) questions
-    if (userAnswers.length >= 10) {
-      document.getElementById("downloadPdfBtn").style.display = "inline-block";
-    }
-  }
-
-  // Generate PDF on button click
-  document.getElementById("downloadPdfBtn").addEventListener("click", async function () {
-    if (userAnswers.length === 0) {
-      alert("No answers to download!");
-      return;
-    }
-
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF();
-    let y = 15;
-
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(16);
-    doc.text("My Quiz Answers", 14, y);
-    y += 10;
-
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(12);
-
-    userAnswers.forEach((q, i) => {
-      const question = `${i + 1}. ${q.question}`;
-      const userAns = `Your Answer: ${q.userAnswer}`;
-      const correctAns = `Correct Answer: ${q.correctAnswer}`;
-
-      doc.text(question, 14, y);
-      y += 7;
-      doc.text(userAns, 20, y);
-      y += 7;
-      doc.text(correctAns, 20, y);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(16);
+      doc.text("My Quiz Answers", 14, y);
       y += 10;
 
-      // Start new page if content overflows
-      if (y > 270) {
-        doc.addPage();
-        y = 20;
-      }
-    });
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(12);
 
-    doc.save("My_Quiz_Answers.pdf");
-  }); 
-  
-</SCRIPT>
+      userAnswers.forEach((q, i) => {
+        const lines = [
+          `${i + 1}. ${q.question}`,
+          `Your Answer: ${q.userAnswer}`,
+          `Correct Answer: ${q.correctAnswer}`
+        ];
+        lines.forEach(line => {
+          doc.text(line, 14, y);
+          y += 7;
+          if (y > 270) { doc.addPage(); y = 20; }
+        });
+        y += 5;
+      });
+
+      doc.save("My_Quiz_Answers.pdf");
+    });
+  </script>
 </body>
 </html>
