@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -559,6 +560,82 @@ document.getElementById('saveHofBtn').addEventListener('click', ()=>{
   // show stored HOF if any
   // load but do not display automatically
 })();
+  <!-- Download button -->
+<button id="downloadPdfBtn" style="
+  display:none;
+  background:#2b6cb0;
+  color:white;
+  border:none;
+  padding:10px 20px;
+  border-radius:8px;
+  font-size:16px;
+  cursor:pointer;
+  margin-top:20px;
+">
+  📄 Download My Answers (PDF)
+</button>
+
+<!-- Load jsPDF from CDN -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+<script>
+  // Track answers
+  let userAnswers = [];
+
+  // Record each attempted question
+  function recordAnswer(questionText, selectedOption, correctAnswer) {
+    userAnswers.push({
+      question: questionText,
+      userAnswer: selectedOption,
+      correctAnswer: correctAnswer
+    });
+
+    // Show button once the user has answered 10 (or all) questions
+    if (userAnswers.length >= 10) {
+      document.getElementById("downloadPdfBtn").style.display = "inline-block";
+    }
+  }
+
+  // Generate PDF on button click
+  document.getElementById("downloadPdfBtn").addEventListener("click", async function () {
+    if (userAnswers.length === 0) {
+      alert("No answers to download!");
+      return;
+    }
+
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    let y = 15;
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(16);
+    doc.text("My Quiz Answers", 14, y);
+    y += 10;
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(12);
+
+    userAnswers.forEach((q, i) => {
+      const question = `${i + 1}. ${q.question}`;
+      const userAns = `Your Answer: ${q.userAnswer}`;
+      const correctAns = `Correct Answer: ${q.correctAnswer}`;
+
+      doc.text(question, 14, y);
+      y += 7;
+      doc.text(userAns, 20, y);
+      y += 7;
+      doc.text(correctAns, 20, y);
+      y += 10;
+
+      // Start new page if content overflows
+      if (y > 270) {
+        doc.addPage();
+        y = 20;
+      }
+    });
+
+    doc.save("My_Quiz_Answers.pdf");
+  });
 </script>
 </body>
 </html>
