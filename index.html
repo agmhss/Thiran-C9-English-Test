@@ -443,7 +443,7 @@ function nextQuestion(){
   chosenOption = null;
   updateUIForQuestion();
 }
-
+recordAnswer(currentQuestion.sentence, selectedOption, currentQuestion.answerText);
 function finishTest(){
   // show final score & basic summary
   sentenceEl.textContent = 'Test Complete — your score: ' + score + ' / ' + presentedQuestions.length;
