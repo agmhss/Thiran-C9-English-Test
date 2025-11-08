@@ -197,14 +197,24 @@
     ];
 
     /* ============================
-       QUIZ STATE (fixed 10, sequential)
-       ============================ */
-    const FIXED_TEN = bank.slice(0, 10); // exact first 10 questions (fixed)
-    let selected = FIXED_TEN.slice();    // do NOT shuffle
-    let currentQ = 0;
-    let score = 0;
-    let chosenOption = null;
+   QUIZ STATE (RANDOM 10 QUESTIONS)
+   ============================ */
 
+// Function to shuffle the question bank randomly
+function shuffleArray(array) {
+  for (let i = array.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [array[i], array[j]] = [array[j], array[i]];
+  }
+  return array;
+}
+
+// Pick 10 random questions each time the quiz starts or refreshes
+const RANDOM_TEN = shuffleArray([...bank]).slice(0, 10);
+let selected = RANDOM_TEN;
+let currentQ = 0;
+let score = 0;
+let chosenOption = null;
     // Timer
     const SECS_PER_Q = 30;
     let remaining = SECS_PER_Q;
